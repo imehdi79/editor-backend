@@ -14,6 +14,8 @@ async function bootstrap() {
 
   const config = app.get(ConfigService);
 
+  app.enableShutdownHooks();
+
   const port = config.get<number>('PORT') ?? 8787;
   await app.listen(port, '0.0.0.0');
   console.log(`Construct Editor backend listening on http://localhost:${port}`);

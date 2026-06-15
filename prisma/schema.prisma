@@ -1,0 +1,34 @@
+// Construct Editor — persistence schema.
+//
+// IMPORTANT: the page document (shapes + viewport) is stored as an opaque JSON
+// blob. The backend never reads or validates the inner CAD shape geometry, so
+// future 3D fields (per-shape or per-page) require ZERO schema/migration change.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  // Client-supplied primary key, e.g. "project-3".
+  id String @id
+
+  name         String
+  activePageId String
+
+  // Full Page[] document (incl. shapes + viewport) stored verbatim as jsonb.
+  // Opaque to the backend — do not depend on its inner schema.
+  pages Json
+
+  // Epoch milliseconds. Stored as double precision (exact for integers < 2^53)
+  // so they serialize straight back to JSON `number` for the frontend.
+  createdAt Float
+  updatedAt Float
+
+  @@index([updatedAt])
+  @@map("projects")
+}
