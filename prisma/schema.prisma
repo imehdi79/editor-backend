@@ -13,6 +13,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String // bcrypt hash — never returned to clients
+  createdAt DateTime @default(now())
+
+  projects Project[]
+
+  @@map("users")
+}
+
 model Project {
   // Client-supplied primary key, e.g. "project-3".
   id String @id
@@ -29,6 +40,11 @@ model Project {
   createdAt Float
   updatedAt Float
 
+  // Owner — every project belongs to a user. Routes are scoped by this column.
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([updatedAt])
+  @@index([userId, updatedAt])
   @@map("projects")
 }
