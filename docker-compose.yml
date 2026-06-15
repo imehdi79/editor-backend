@@ -1,4 +1,46 @@
 services:
+  api:
+    build: .
+    container_name: construct-editor-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      # Reach Postgres over the internal network by service name, not localhost.
+      DATABASE_URL: postgresql://construct:construct@db:5432/construct_editor?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - traefik
+      - internal
+    healthcheck:
+      test:
+        ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:8787/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=traefik'
+
+      # HTTPS router (serves the API)
+      - 'traefik.http.routers.construct-api.rule=Host(`api.mehdify.com`)'
+      - 'traefik.http.routers.construct-api.entrypoints=websecure'
+      - 'traefik.http.routers.construct-api.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.construct-api.service=construct-api'
+      - 'traefik.http.services.construct-api.loadbalancer.server.port=8787'
+
+      # HTTP router -> permanent redirect to HTTPS
+      - 'traefik.http.routers.construct-api-web.rule=Host(`api.mehdify.com`)'
+      - 'traefik.http.routers.construct-api-web.entrypoints=web'
+      - 'traefik.http.routers.construct-api-web.middlewares=construct-api-https-redirect'
+      - 'traefik.http.middlewares.construct-api-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.middlewares.construct-api-https-redirect.redirectscheme.permanent=true'
+
   db:
     image: postgres:16-alpine
     container_name: construct-editor-db
@@ -7,11 +49,14 @@ services:
       POSTGRES_USER: construct
       POSTGRES_PASSWORD: construct
       POSTGRES_DB: construct_editor
-    ports:
-      # Host 5432 -> container 5432. Matches DATABASE_URL in .env.example.
-      - '5432:5432'
+    # No host port mapping in production — only the api service (same internal
+    # network) needs to reach Postgres. Uncomment for local DB access.
+    # ports:
+    #   - '5432:5432'
     volumes:
       - construct-editor-pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U construct -d construct_editor']
       interval: 5s
@@ -20,3 +65,11 @@ services:
 
 volumes:
   construct-editor-pgdata:
+
+networks:
+  # Shared with the Traefik reverse proxy (created outside this stack).
+  traefik:
+    external: true
+    name: traefik
+  # Private network for api <-> db; not reachable from Traefik or the host.
+  internal:
