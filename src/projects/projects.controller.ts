@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   Put,
   Query,
@@ -64,5 +66,15 @@ export class ProjectsController {
       );
     }
     return this.projects.upsert(user.userId, dto);
+  }
+
+  /** DELETE /projects/:id → 204. Idempotent. */
+  @Delete(':id')
+  @HttpCode(204)
+  async remove(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ): Promise<void> {
+    await this.projects.remove(user.userId, id);
   }
 }
