@@ -1,7 +1,17 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import type { AuthUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UpsertProjectDto } from './dto/upsert-project.dto';
 import { ProjectsService } from './projects.service';
 import { Project, ProjectSummary } from './projects.types';
 
@@ -39,5 +49,20 @@ export class ProjectsController {
     @Param('id') id: string,
   ): Promise<Project> {
     return this.projects.get(user.userId, id);
+  }
+
+  /** PUT /projects/:id → 200 Project. Upsert; body id must match path id. */
+  @Put(':id')
+  upsert(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: UpsertProjectDto,
+  ): Promise<Project> {
+    if (dto.id !== id) {
+      throw new BadRequestException(
+        `Body id "${dto.id}" does not match path id "${id}"`,
+      );
+    }
+    return this.projects.upsert(user.userId, dto);
   }
 }
