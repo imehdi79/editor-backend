@@ -1,0 +1,22 @@
+node_modules
+
+*.lock
+
+# compiled output
+/dist
+/build
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / IDE
+.DS_Store
+.idea
+
+# Tests
+/coverage
+
+# Env (do NOT commit real secrets; .env.example is the template)
+.env
+.env.local
