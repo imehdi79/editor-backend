@@ -6,6 +6,7 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -17,6 +18,9 @@ async function bootstrap() {
 
   // Only the envelope is validated; whitelist strips unknown top-level props.
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+  // Consistent { error: { message } } envelope for all 4xx/5xx.
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   app.enableShutdownHooks();
 
