@@ -22,6 +22,20 @@ async function bootstrap() {
   // Consistent { error: { message } } envelope for all 4xx/5xx.
   app.useGlobalFilters(new HttpExceptionFilter());
 
+  // Vite dev origin(s); configurable via CORS_ORIGIN (comma-separated).
+  const corsOrigin = (
+    config.get<string>('CORS_ORIGIN') ?? 'http://localhost:3030'
+  )
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  // NOTE: @fastify/cors defaults methods to 'GET,HEAD,POST' (no PUT/PATCH/DELETE),
+  // so list them explicitly or the PUT/DELETE preflight gets rejected.
+  app.enableCors({
+    origin: corsOrigin,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
+
   app.enableShutdownHooks();
 
   const port = config.get<number>('PORT') ?? 8787;
