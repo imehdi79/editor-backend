@@ -1,9 +1,9 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ProjectsService } from './projects.service';
-import { ProjectSummary } from './projects.types';
+import { Project, ProjectSummary } from './projects.types';
 
 @Controller('projects')
 @UseGuards(JwtAuthGuard) // every project route requires a valid JWT
@@ -30,5 +30,14 @@ export class ProjectsController {
       user.userId,
       Number.isFinite(parsed) ? parsed : undefined,
     );
+  }
+
+  /** GET /projects/:id → 200 Project (full doc), or 404 when missing/not owned. */
+  @Get(':id')
+  get(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ): Promise<Project> {
+    return this.projects.get(user.userId, id);
   }
 }
