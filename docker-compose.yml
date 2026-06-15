@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: construct-editor-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: construct
+      POSTGRES_PASSWORD: construct
+      POSTGRES_DB: construct_editor
+    ports:
+      # Host 5432 -> container 5432. Matches DATABASE_URL in .env.example.
+      - '5432:5432'
+    volumes:
+      - construct-editor-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U construct -d construct_editor']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  construct-editor-pgdata:
