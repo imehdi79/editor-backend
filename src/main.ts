@@ -1,3 +1,4 @@
+import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import {
@@ -13,6 +14,9 @@ async function bootstrap() {
   );
 
   const config = app.get(ConfigService);
+
+  // Only the envelope is validated; whitelist strips unknown top-level props.
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   app.enableShutdownHooks();
 
