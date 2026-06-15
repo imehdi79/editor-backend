@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -30,6 +34,19 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: { email, password },
     });
+
+    return this.issue(user.id, user.email);
+  }
+
+  async login(dto: AuthCredentialsDto): Promise<AuthResult> {
+    const email = dto.email.toLowerCase().trim();
+    const user = await this.prisma.user.findUnique({ where: { email } });
+
+    // Compare even when the user is missing-ish to keep timing uniform.
+    const ok = user && (await bcrypt.compare(dto.password, user.password));
+    if (!ok || !user) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
 
     return this.issue(user.id, user.email);
   }
