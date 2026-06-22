@@ -20,3 +20,8 @@ npm-debug.log*
 # Env (do NOT commit real secrets; .env.example is the template)
 .env
 .env.local
+tsconfig.build.tsbuildinfo
+
+/prisma/seed.d.ts
+/prisma/seed.js
+/prisma/seed.js.map
