@@ -23,18 +23,19 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   // Vite dev origin(s); configurable via CORS_ORIGIN (comma-separated).
-  const corsOrigin = (
-    config.get<string>('CORS_ORIGIN') ?? 'http://localhost:3030'
-  )
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
+  // const corsOrigin = (
+  //   config.get<string>('CORS_ORIGIN') ?? 'http://localhost:3030'
+  // )
+  //   .split(',')
+  //   .map((o) => o.trim())
+  //   .filter(Boolean);
   // NOTE: @fastify/cors defaults methods to 'GET,HEAD,POST' (no PUT/PATCH/DELETE),
   // so list them explicitly or the PUT/DELETE preflight gets rejected.
-  app.enableCors({
-    origin: corsOrigin,
-    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  });
+  // app.enableCors({
+  //   origin: corsOrigin,
+  //   methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  // });
+  app.enableCors();
 
   app.enableShutdownHooks();
 
