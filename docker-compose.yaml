@@ -1,0 +1,73 @@
+services:
+  editor-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: editor-backend:latest
+    container_name: editor-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      PORT: 8787
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://mehdify.tech,https://www.mehdify.tech}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://construct:construct@postgres:5432/construct_editor?schema=public}
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-before-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+    networks:
+      - web
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.editor-backend.rule=Host(`api.mehdify.tech`)"
+      - "traefik.http.routers.editor-backend.entrypoints=websecure"
+      - "traefik.http.routers.editor-backend.tls=true"
+      - "traefik.http.routers.editor-backend.tls.certresolver=le"
+      - "traefik.http.services.editor-backend.loadbalancer.server.port=8787"
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrate
+    image: editor-backend-migrate:latest
+    container_name: editor-backend-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://construct:construct@postgres:5432/construct_editor?schema=public}
+    networks:
+      - backend
+    restart: "no"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: editor-backend-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-construct}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-construct}
+      POSTGRES_DB: ${POSTGRES_DB:-construct_editor}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  web:
+    external: true
+  backend:
+    name: editor-backend
+
+volumes:
+  postgres_data:

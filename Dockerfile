@@ -1,40 +1,42 @@
 # syntax=docker/dockerfile:1
 
-# ---- Builder ----
-# Bun is the project's package manager (bun.lock). Install + build here, then
-# hand the compiled output to a slim Node runtime.
-FROM oven/bun:1-alpine AS builder
+FROM node:22-bookworm-slim AS deps
 WORKDIR /app
+ENV NODE_ENV=development
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+COPY package*.json ./
+RUN npm install
 
-# Install dependencies against the committed lockfile for reproducible builds.
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
-
-# Generate the Prisma client before the Nest build (schema only — no DB needed).
+FROM deps AS build
 COPY prisma ./prisma
-RUN bunx prisma generate
+COPY nest-cli.json tsconfig*.json ./
+COPY src ./src
+RUN npx prisma generate \
+  && npm run build
 
-# Compile TypeScript -> dist/ (nest build).
-COPY . .
-RUN bun run build
+FROM build AS prod-deps
+RUN npm prune --omit=dev
 
-# ---- Runner ----
-# Plain Node runtime: no bun, no source. We keep the full node_modules from the
-# builder so the Prisma CLI is available at startup for `migrate deploy`.
-FROM node:22-alpine AS runner
+FROM deps AS migrate
+COPY prisma ./prisma
+CMD ["npx", "prisma", "migrate", "deploy"]
+
+FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
-
 ENV NODE_ENV=production
-ENV PORT=8787
-ENV HOSTNAME=0.0.0.0
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && groupadd --system --gid 1001 nodejs \
+  && useradd --system --uid 1001 --gid nodejs nestjs
 
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/package.json ./package.json
+COPY --from=prod-deps --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=build --chown=nestjs:nodejs /app/dist ./dist
+COPY --from=build --chown=nestjs:nodejs /app/prisma ./prisma
+COPY --from=build --chown=nestjs:nodejs /app/package.json ./package.json
 
+USER nestjs
 EXPOSE 8787
-
-# Apply pending migrations, then start the server. `migrate deploy` is the
-# production-safe, non-interactive variant (no schema drift, no prompts).
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/main"]
+CMD ["node", "dist/main"]
