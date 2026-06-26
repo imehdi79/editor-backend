@@ -20,8 +20,31 @@ model User {
   createdAt DateTime @default(now())
 
   projects Project[]
+  pricing  PricingSettings?
 
   @@map("users")
+}
+
+// Per-user pricing settings — one row per user (currency + demolition rate +
+// the per-material billing rules). The `rates` map is an opaque JSON blob
+// (Record<material, MaterialRate>); the backend never inspects its contents, so
+// new materials / rule fields require ZERO schema change.
+model PricingSettings {
+  // The owning user's id is the primary key — one settings row per account.
+  userId String @id
+
+  currency     String
+  demolishRate Float  @default(0)
+
+  // Per-material billing rules, stored verbatim as jsonb. Opaque to the backend.
+  rates Json
+
+  // Epoch milliseconds (server-owned), as in Project.
+  updatedAt Float
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("pricing_settings")
 }
 
 model Project {
